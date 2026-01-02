@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from google import genai
+import google.generativeai as genai
 
 # ========== CONFIGURATION ==========
 st.set_page_config(
@@ -26,7 +26,12 @@ def get_gemini_client():
         4. Click "Save" then "Rerun"
         """)
         st.stop()
-    return genai.Client(api_key=api_key)
+    
+    # Configure Gemini
+    genai.configure(api_key=api_key)
+    
+    # Return model (not client)
+    return genai.GenerativeModel('gemini-pro')
 
 # ========== SESSION STATE ==========
 if 'df' not in st.session_state:
@@ -38,6 +43,7 @@ if 'messages' not in st.session_state:
 
 # ========== MAIN APP ==========
 st.title("🤖 AI CSV Chatbot")
+st.markdown("Upload a CSV file and chat with AI about your data")
 st.markdown("---")
 
 # ========== SIDEBAR ==========
@@ -97,7 +103,7 @@ if st.session_state.df is not None:
         with st.chat_message("assistant"):
             with st.spinner("🤔 Analyzing your data..."):
                 try:
-                    client = get_gemini_client()
+                    model = get_gemini_client()
                     
                     # Create data context
                     context = f"""
@@ -117,10 +123,7 @@ if st.session_state.df is not None:
 **INSTRUCTIONS:** Answer based ONLY on the data above. Be specific and include numbers/values when possible.
 """
                     
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=context
-                    )
+                    response = model.generate_content(context)
                     
                     answer = response.text
                     st.markdown(answer)
@@ -148,13 +151,6 @@ if st.session_state.df is not None:
             st.dataframe(df.describe(), use_container_width=True)
         else:
             st.info("📝 No numeric columns for statistical summary")
-        
-        # Column info
-        st.subheader("📝 Column Information")
-        for col in df.columns:
-            unique_count = df[col].nunique()
-            missing_count = df[col].isnull().sum()
-            st.write(f"**{col}:** {df[col].dtype} | Unique: {unique_count} | Missing: {missing_count}")
 
 else:
     # Welcome screen
@@ -169,7 +165,6 @@ else:
         - 💬 Ask questions in plain English
         - 🤖 AI-powered analysis
         - 📊 Instant data preview
-        - 🔍 Statistical insights
         """)
     
     with col2:
@@ -179,21 +174,8 @@ else:
         - _"Show me the first 5 rows"_
         - _"What's the average of [column]?"_
         - _"How many missing values?"_
-        - _"Find rows where [condition]"_
         """)
-    
-    st.divider()
-    st.markdown("""
-    ### 🚀 **Quick Start**
-    1. **Upload** your CSV file
-    2. **Ask** a question about your data
-    3. **Get** instant AI-powered answers
-    """)
 
 # ========== FOOTER ==========
 st.markdown("---")
-st.caption("""
-🔒 **Privacy:** Your data is processed locally and not stored | 
-🤖 **Powered by Google Gemini AI** | 
-🚀 **Built with Streamlit**
-""")
+st.caption("🔒 Privacy: Data processed locally | 🤖 Powered by Google Gemini | 🚀 Built with Streamlit")

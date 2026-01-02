@@ -1,170 +1,74 @@
 import streamlit as st
 import pandas as pd
-import io
 import os
 from google import genai
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Page configuration
 st.set_page_config(
-    page_title="csv-analysis-ai",
+    page_title="AI CSV Chatbot",
     page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Initialize Gemini client
 @st.cache_resource
 def get_gemini_client():
-    """Get Gemini client with API key from environment"""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        st.error("❌ GEMINI_API_KEY not found. Please set it in Streamlit Cloud secrets.")
+        st.error("❌ GEMINI_API_KEY not set. Please add it in Streamlit Cloud secrets.")
         st.stop()
     return genai.Client(api_key=api_key)
 
 # Session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "df" not in st.session_state:
+if 'df' not in st.session_state:
     st.session_state.df = None
-if "file_name" not in st.session_state:
+if 'file_name' not in st.session_state:
     st.session_state.file_name = None
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
 
-def get_csv_summary(df):
-    """Generate comprehensive summary of the dataframe"""
-    summary = f"""
-CSV DATA CONTEXT:
-
-DATASET OVERVIEW:
-- Total Rows: {len(df):,}
-- Total Columns: {len(df.columns)}
-- Column Names: {', '.join(df.columns.tolist())}
-
-COLUMN DETAILS:
-"""
-    
-    # Add column information
-    for col in df.columns:
-        dtype = str(df[col].dtype)
-        unique_count = df[col].nunique()
-        missing_count = df[col].isnull().sum()
-        summary += f"- {col}: {dtype} | Unique: {unique_count} | Missing: {missing_count}\n"
-    
-    # Add sample data
-    summary += f"""
-SAMPLE DATA (First 3 rows):
-{df.head(3).to_string()}
-
-STATISTICAL SUMMARY:
-"""
-    
-    # Add numeric statistics if available
-    numeric_cols = df.select_dtypes(include=['number']).columns
-    if not numeric_cols.empty:
-        summary += df[numeric_cols].describe().to_string()
-    else:
-        summary += "No numeric columns for statistical summary"
-    
-    return summary
-
-def get_ai_response(question, df):
-    """Get response from Gemini AI about the CSV data"""
-    try:
-        client = get_gemini_client()
-        data_summary = get_csv_summary(df)
-        
-        prompt = f"""
-You are a data analyst assistant. Below is CSV data:
-
-{data_summary}
-
-USER QUESTION: {question}
-
-IMPORTANT INSTRUCTIONS:
-1. Answer based ONLY on the data provided above
-2. Be specific - include actual numbers, values, and column names
-3. If calculation is needed, show your reasoning
-4. If the data doesn't contain the answer, say so clearly
-5. Format your answer clearly with bullet points or paragraphs
-
-ANSWER:
-"""
-        
-        response = client.models.generate_content(
-            model=st.session_state.get("model", "gemini-2.5-flash"),
-            contents=prompt
-        )
-        
-        return response.text
-        
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-# Main App
 st.title("🤖 AI CSV Chatbot")
 st.markdown("Upload a CSV file and chat with AI about your data")
 
 # Sidebar
 with st.sidebar:
-    st.header("📁 Upload CSV File")
+    st.header("📁 Upload CSV")
     
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
-        type=['csv'],
-        help="Upload a CSV file to analyze"
+        type=['csv']
     )
     
-    if uploaded_file is not None:
-        # Check if this is a new file
+    if uploaded_file:
         if st.session_state.file_name != uploaded_file.name:
             try:
                 df = pd.read_csv(uploaded_file)
                 st.session_state.df = df
                 st.session_state.file_name = uploaded_file.name
-                st.session_state.messages = []  # Clear previous chat
-                
+                st.session_state.messages = []  # Clear chat
                 st.success(f"✅ Loaded: {uploaded_file.name}")
                 
-                # Display statistics
+                # Show stats
                 st.subheader("📊 Data Summary")
                 col1, col2 = st.columns(2)
                 with col1:
                     st.metric("Rows", len(df))
                 with col2:
                     st.metric("Columns", len(df.columns))
-                
-                # Show memory usage
-                mem_usage = df.memory_usage(deep=True).sum() / 1024
-                st.caption(f"Memory: {mem_usage:.1f} KB")
-                
+                    
             except Exception as e:
-                st.error(f"Error reading file: {e}")
+                st.error(f"Error: {e}")
     
-    # Model selection
     st.divider()
-    st.header("⚙️ Settings")
-    
-    model_options = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-    st.session_state.model = st.selectbox(
-        "Select Gemini Model",
-        model_options,
-        index=0
-    )
-    
-    if st.button("🗑️ Clear Conversation", use_container_width=True):
+    if st.button("Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
-    
-    st.divider()
-    st.caption("Powered by Google Gemini AI")
 
-# Main content area
+# Main area
 if st.session_state.df is not None:
-    # Display chat messages
+    df = st.session_state.df
+    
+    # Display chat
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -179,57 +83,65 @@ if st.session_state.df is not None:
         
         # Get AI response
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = get_ai_response(prompt, st.session_state.df)
-                st.markdown(response)
-                
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.spinner("Analyzing..."):
+                try:
+                    client = get_gemini_client()
+                    
+                    # Create data context
+                    context = f"""
+CSV Data:
+- File: {st.session_state.file_name}
+- Rows: {len(df)}, Columns: {len(df.columns)}
+- Column names: {', '.join(df.columns.tolist())}
+- First 3 rows:
+{df.head(3).to_string()}
 
-    # Data preview tabs
-    tab1, tab2 = st.tabs(["📋 Data Preview", "📈 Statistics"])
+User Question: {prompt}
+
+Please answer based only on the data above. Be specific and include numbers when possible.
+"""
+                    
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=context
+                    )
+                    
+                    answer = response.text
+                    st.markdown(answer)
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+                    
+                except Exception as e:
+                    error_msg = f"❌ Error: {str(e)}"
+                    st.error(error_msg)
     
-    with tab1:
-        st.dataframe(st.session_state.df, use_container_width=True, height=500)
+    # Data preview
+    with st.expander("📋 View Data"):
+        st.dataframe(df, use_container_width=True, height=300)
     
-    with tab2:
-        df = st.session_state.df
-        # Numeric statistics
+    with st.expander("📊 Statistics"):
         if not df.select_dtypes(include=['number']).empty:
-            st.subheader("Numeric Columns Statistics")
-            st.dataframe(df.describe(), use_container_width=True)
-        
-        # Missing values
-        missing = df.isnull().sum()
-        if missing.sum() > 0:
-            st.subheader("Missing Values")
-            st.dataframe(missing[missing > 0].rename("Missing Count"), use_container_width=True)
+            st.dataframe(df.describe())
         else:
-            st.info("✅ No missing values found")
+            st.info("No numeric columns")
 
 else:
-    # Welcome screen
+    # Welcome message
     st.info("👈 Upload a CSV file from the sidebar to start!")
     
     st.markdown("""
-    ### ✨ Features:
-    - 📁 **Upload any CSV file**
-    - 💬 **Ask natural language questions**
-    - 🤖 **Powered by Google Gemini AI**
-    - 📊 **Automatic data analysis**
+    ### 🚀 How to use:
+    1. **Upload** a CSV file
+    2. **Ask questions** about your data
+    3. **Get AI-powered answers**
     
-    ### 📝 Example Questions:
+    ### 💡 Example questions:
     - "What columns are in my data?"
     - "Show me the first 5 rows"
-    - "What's the average of [column name]?"
-    - "How many missing values are there?"
-    - "Find rows where [condition]"
-    
-    ### ⚠️ Note:
-    - Files are processed locally in your browser
-    - No data is stored on our servers
-    - Supports files up to 200MB
+    - "What's the average of column X?"
+    - "How many missing values?"
+    - "Find rows where condition"
     """)
 
 # Footer
 st.divider()
-st.caption("Built with Streamlit & Google Gemini AI | Files are processed locally")
+st.caption("Built with Streamlit & Google Gemini AI")

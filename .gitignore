@@ -1,0 +1,23 @@
+# Environment
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Streamlit
+.streamlit/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Your data (optional - comment out if you want to keep sample data)
+data/*.csv
+!data/sample_data.csv

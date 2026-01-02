@@ -1,0 +1,16 @@
+Customer_ID,Name,Age,Department,Salary,Join_Date,Performance_Score
+1001,Alice Johnson,28,Engineering,75000,2022-01-15,8.5
+1002,Bob Smith,34,Marketing,65000,2021-06-20,7.8
+1003,Carol White,41,Engineering,95000,2019-03-10,9.2
+1004,David Brown,29,Sales,58000,2022-08-05,7.5
+1005,Emma Davis,36,HR,62000,2020-11-12,8.1
+1006,Frank Miller,45,Engineering,105000,2018-02-28,9.5
+1007,Grace Wilson,31,Marketing,68000,2021-09-14,8.3
+1008,Henry Moore,27,Sales,55000,2023-01-20,7.2
+1009,Iris Taylor,38,Engineering,88000,2020-04-17,8.8
+1010,Jack Anderson,33,HR,64000,2021-07-22,7.9
+1011,Karen Thomas,42,Marketing,72000,2019-10-05,8.6
+1012,Leo Jackson,30,Engineering,78000,2022-03-11,8.4
+1013,Mia Martinez,26,Sales,52000,2023-05-08,7.1
+1014,Noah Garcia,39,Engineering,92000,2019-12-15,9.0
+1015,Olivia Rodriguez,35,HR,66000,2020-08-30,8.2
